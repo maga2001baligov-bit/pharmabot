@@ -1,4 +1,6 @@
 import asyncio
+import hashlib
+import hmac
 import json
 import logging
 import os
@@ -7,6 +9,7 @@ import re
 import sqlite3
 from dataclasses import dataclass, field
 from html import escape as h
+from urllib.parse import parse_qsl
 
 from aiogram import Bot, Dispatcher, F, Router
 from aiogram.filters import Command, CommandStart
@@ -15,7 +18,9 @@ from aiogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     Message,
+    WebAppInfo,
 )
+from aiohttp import web
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("pharmabot")
@@ -30,6 +35,12 @@ if not TOKEN:
 
 EXAM_TEST_COUNT = int(os.environ.get("EXAM_TEST_COUNT", 40))
 EXAM_RECIPE_COUNT = int(os.environ.get("EXAM_RECIPE_COUNT", 20))
+
+# Public HTTPS URL of the deployed web app (Railway domain, e.g. https://xxx.up.railway.app)
+# Leave unset to fall back to the old in-chat button menu.
+WEBAPP_URL = os.environ.get("WEBAPP_URL", "").rstrip("/")
+PORT = int(os.environ.get("PORT", 8080))
+WEBAPP_DIR = os.path.join(BASE_DIR, "webapp")
 
 # ---------------------------------------------------------------------------
 # Data loading
@@ -66,6 +77,47 @@ def render_flashcard(raw: str, revealed: bool) -> str:
         last = m.end()
     parts.append(h(raw[last:]))
     return "".join(parts)
+
+
+def render_structured_body(q: dict, revealed: bool) -> str:
+    """Render matching / table / characterize / fill_blank question types
+    as clean HTML, without leaning on the original messy raw text."""
+    qtype = q["type"]
+
+    if qtype in ("matching", "table"):
+        lines = [f"<b>{h(q['question'])}</b>", ""]
+        for i, cat in enumerate(q["categories"]):
+            lines.append(f"{i + 1}. {h(cat)}")
+        lines.append("")
+        for i, item in enumerate(q["items"]):
+            if revealed:
+                cat_idx = q["answer"][i]
+                lines.append(f"• {h(item)} → <b>{cat_idx + 1}</b>. {h(q['categories'][cat_idx])}")
+            else:
+                lines.append(f"• {h(item)} → ?")
+        return "\n".join(lines)
+
+    if qtype == "characterize":
+        lines = [f"<b>{h(q['question'])}</b>", ""]
+        for axis in q["axes"]:
+            lines.append(f"<u>{h(axis['label'])}</u>")
+            for i, opt in enumerate(axis["options"]):
+                mark = " ✅" if revealed and i == axis["correct"] else ""
+                lines.append(f"  {i + 1}. {h(opt)}{mark}")
+            lines.append("")
+        return "\n".join(lines).strip()
+
+    if qtype == "fill_blank" and "blanks" in q:
+        lines = [f"<b>{h(q['question'])}</b>", ""]
+        for bi, options in enumerate(q["blanks"]):
+            lines.append(f"Пропуск {bi + 1}:")
+            for opt in options:
+                mark = " ✅" if revealed and opt["correct"] else ""
+                lines.append(f"  · {h(opt['text'])}{mark}")
+        return "\n".join(lines)
+
+    # fallback: raw markdown-ish text with bold-hide/reveal
+    return render_flashcard(q.get("raw", ""), revealed)
 
 
 # ---------------------------------------------------------------------------
@@ -239,16 +291,25 @@ router = Router()
 @router.message(CommandStart())
 async def cmd_start(message: Message):
     SESSIONS.pop(message.from_user.id, None)
-    await message.answer(
-        "Привет! Это тренажёр по фармакологии: тесты и рецепты 1-го этапа экзамена.\n\n"
-        "Выбирай режим:",
-        reply_markup=main_menu_kb(),
-    )
+    if WEBAPP_URL:
+        kb = InlineKeyboardMarkup(
+            inline_keyboard=[[InlineKeyboardButton(text="📖 Открыть тренажёр", web_app=WebAppInfo(url=WEBAPP_URL))]]
+        )
+        await message.answer(
+            "Привет! Тесты и рецепты 1-го этапа экзамена — в удобном приложении.",
+            reply_markup=kb,
+        )
+    else:
+        await message.answer(
+            "Привет! Это тренажёр по фармакологии: тесты и рецепты 1-го этапа экзамена.\n\n"
+            "Выбирай режим:",
+            reply_markup=main_menu_kb(),
+        )
 
 
 @router.message(Command("menu"))
 async def cmd_menu(message: Message):
-    await message.answer("Меню:", reply_markup=main_menu_kb())
+    await message.answer("Меню (классический режим в чате):", reply_markup=main_menu_kb())
 
 
 @router.message(Command("stats"))
@@ -373,11 +434,12 @@ async def show_next_test(message: Message, user_id: int):
         text = header + h(q["question"])
         await message.answer(text, reply_markup=choice_kb(q, set()))
     else:
-        body = render_flashcard(q["raw"], revealed=False)
+        body = render_structured_body(q, revealed=False)
         kind_label = {
             "matching": "🔗 Соответствие",
             "fill_blank": "✏️ Вставьте слова",
             "table": "📊 Таблица",
+            "characterize": "🧩 Охарактеризуйте",
             "flashcard": "❓ Задание",
         }.get(q["type"], "❓ Задание")
         text = header + f"<i>{kind_label}</i>\n\n" + body
@@ -451,9 +513,10 @@ async def cb_reveal(cb: CallbackQuery):
             "matching": "🔗 Соответствие",
             "fill_blank": "✏️ Вставьте слова",
             "table": "📊 Таблица",
+            "characterize": "🧩 Охарактеризуйте",
             "flashcard": "❓ Задание",
         }.get(q["type"], "❓ Задание")
-        body = render_flashcard(q["raw"], revealed=True)
+        body = render_structured_body(q, revealed=True)
         text = header + f"<i>{kind_label}</i>\n\n" + body
         await cb.message.edit_text(text, reply_markup=flashcard_kb(True), parse_mode="HTML")
     else:
@@ -532,12 +595,97 @@ async def finish_session(message: Message, user_id: int, kind: str):
 
 
 # ---------------------------------------------------------------------------
+# Web app (Telegram Mini App): static frontend + JSON API
+# ---------------------------------------------------------------------------
+
+def validate_init_data(init_data: str):
+    """Validate Telegram WebApp initData per Telegram's documented algorithm.
+    Returns the parsed user dict on success, or None if invalid/missing."""
+    if not init_data:
+        return None
+    try:
+        pairs = dict(parse_qsl(init_data, strict_parsing=True))
+    except ValueError:
+        return None
+    received_hash = pairs.pop("hash", None)
+    if not received_hash:
+        return None
+    data_check_string = "\n".join(f"{k}={v}" for k, v in sorted(pairs.items()))
+    secret_key = hmac.new(b"WebAppData", TOKEN.encode(), hashlib.sha256).digest()
+    calculated_hash = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(calculated_hash, received_hash):
+        return None
+    user_raw = pairs.get("user")
+    if not user_raw:
+        return None
+    try:
+        return json.loads(user_raw)
+    except json.JSONDecodeError:
+        return None
+
+
+async def handle_index(request: web.Request):
+    return web.FileResponse(os.path.join(WEBAPP_DIR, "index.html"))
+
+
+async def handle_api_data(request: web.Request):
+    return web.json_response({"tests": ALL_TESTS, "recipes": ALL_RECIPES})
+
+
+def _user_id_from_request(payload: dict):
+    user = validate_init_data(payload.get("initData", ""))
+    if not user:
+        return None
+    return user.get("id")
+
+
+async def handle_api_progress(request: web.Request):
+    payload = await request.json()
+    user_id = _user_id_from_request(payload)
+    if user_id is None:
+        return web.json_response({"error": "invalid initData"}, status=401)
+    kind = payload.get("kind")
+    item_id = payload.get("item_id")
+    ok = bool(payload.get("correct"))
+    if kind not in ("test", "recipe") or not isinstance(item_id, int):
+        return web.json_response({"error": "bad request"}, status=400)
+    record_result(user_id, kind, item_id, ok)
+    return web.json_response({"status": "ok"})
+
+
+async def handle_api_stats(request: web.Request):
+    payload = await request.json() if request.can_read_body else {}
+    user_id = _user_id_from_request(payload)
+    if user_id is None:
+        return web.json_response({"error": "invalid initData"}, status=401)
+    return web.json_response(get_stats(user_id))
+
+
+def build_web_app() -> web.Application:
+    app = web.Application()
+    app.router.add_get("/", handle_index)
+    app.router.add_get("/api/data", handle_api_data)
+    app.router.add_post("/api/progress", handle_api_progress)
+    app.router.add_post("/api/stats", handle_api_stats)
+    return app
+
+
+# ---------------------------------------------------------------------------
 
 async def main():
     bot = Bot(token=TOKEN)
     dp = Dispatcher()
     dp.include_router(router)
     log.info("Bot starting. Loaded %d tests, %d recipes.", len(ALL_TESTS), len(ALL_RECIPES))
+
+    if WEBAPP_URL:
+        app = build_web_app()
+        runner = web.AppRunner(app)
+        await runner.setup()
+        site = web.TCPSite(runner, "0.0.0.0", PORT)
+        await site.start()
+        log.info("Web app server listening on 0.0.0.0:%d (public URL: %s)", PORT, WEBAPP_URL)
+
     await dp.start_polling(bot)
 
 
