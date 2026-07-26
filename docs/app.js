@@ -124,6 +124,12 @@
   function renderTestCard(area, q) {
     if (q.type === "choice") {
       renderChoiceCard(area, q);
+    } else if (q.type === "matching" || q.type === "table") {
+      renderMatchingCard(area, q);
+    } else if (q.type === "characterize") {
+      renderCharacterizeCard(area, q);
+    } else if (q.type === "fill_blank" && q.blanks) {
+      renderFillBlankCard(area, q);
     } else {
       renderFlashcardTestCard(area, q);
     }
@@ -177,6 +183,225 @@
       const v = area.querySelector("#verdict");
       v.innerHTML = `<div class="verdict ${ok ? "ok" : "no"}">${ok ? "✓ Верно" : "✕ Неверно"}</div>`;
       if (ok) session.correct++; else session.wrong++;
+      addNextButton(area);
+    }
+  }
+
+  const NUM_LABELS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
+
+  function renderMatchingCard(area, q) {
+    const picks = new Array(q.items.length).fill(null);
+    let graded = false;
+
+    area.innerHTML = `
+      <div class="slip">
+        <div class="slip-kicker">${q.type === "matching" ? "Соответствие" : "Классификация"}</div>
+        <div class="slip-question">${escapeHtml(q.question)}</div>
+        <div class="legend" id="legend"></div>
+        <div class="match-list" id="match-list"></div>
+        <div id="verdict"></div>
+      </div>
+    `;
+    const legend = area.querySelector("#legend");
+    q.categories.forEach((c, i) => {
+      const chip = document.createElement("div");
+      chip.className = "legend-chip";
+      chip.innerHTML = `<span class="legend-num">${NUM_LABELS[i] || i + 1}</span>${escapeHtml(c)}`;
+      legend.appendChild(chip);
+    });
+
+    const list = area.querySelector("#match-list");
+    q.items.forEach((itemText, itemIdx) => {
+      const row = document.createElement("div");
+      row.className = "match-row";
+      row.innerHTML = `<div class="match-item">${escapeHtml(itemText)}</div><div class="match-picks"></div>`;
+      const picksEl = row.querySelector(".match-picks");
+      q.categories.forEach((c, catIdx) => {
+        const b = document.createElement("button");
+        b.className = "pick-btn";
+        b.textContent = NUM_LABELS[catIdx] || catIdx + 1;
+        b.addEventListener("click", () => {
+          if (graded) return;
+          picks[itemIdx] = catIdx;
+          [...picksEl.children].forEach((c2) => c2.classList.remove("picked"));
+          b.classList.add("picked");
+          maybeShowCheck();
+        });
+        picksEl.appendChild(b);
+      });
+      list.appendChild(row);
+    });
+
+    function maybeShowCheck() {
+      if (picks.every((p) => p !== null) && !area.querySelector(".btn-primary")) {
+        const btn = document.createElement("button");
+        btn.className = "btn-primary";
+        btn.style.marginTop = "14px";
+        btn.textContent = "Проверить";
+        btn.addEventListener("click", grade);
+        area.querySelector(".slip").appendChild(btn);
+      }
+    }
+
+    function grade() {
+      graded = true;
+      const rows = list.querySelectorAll(".match-row");
+      let allOk = true;
+      rows.forEach((row, i) => {
+        const ok = picks[i] === q.answer[i];
+        if (!ok) allOk = false;
+        row.classList.add(ok ? "row-ok" : "row-no");
+        [...row.querySelectorAll(".pick-btn")].forEach((b) => (b.disabled = true));
+        if (!ok) {
+          const hint = document.createElement("div");
+          hint.className = "row-hint";
+          hint.textContent = `Верно: ${q.categories[q.answer[i]]}`;
+          row.appendChild(hint);
+        }
+      });
+      if (allOk) session.correct++; else session.wrong++;
+      area.querySelector(".btn-primary").remove();
+      const v = area.querySelector("#verdict");
+      v.innerHTML = `<div class="verdict ${allOk ? "ok" : "no"}">${allOk ? "✓ Всё верно" : "✕ Есть ошибки"}</div>`;
+      addNextButton(area);
+    }
+  }
+
+  function renderCharacterizeCard(area, q) {
+    let graded = false;
+    area.innerHTML = `
+      <div class="slip">
+        <div class="slip-kicker">Охарактеризуйте</div>
+        <div class="slip-question">${escapeHtml(q.question)}</div>
+        <div id="axes"></div>
+        <div id="verdict"></div>
+      </div>
+    `;
+    const axesEl = area.querySelector("#axes");
+    const picks = new Array(q.axes.length).fill(null);
+
+    q.axes.forEach((axis, axisIdx) => {
+      const block = document.createElement("div");
+      block.className = "axis-block";
+      block.innerHTML = `<div class="axis-label">${escapeHtml(axis.label)}</div>`;
+      axis.options.forEach((opt, optIdx) => {
+        const b = document.createElement("button");
+        b.className = "opt axis-opt";
+        b.innerHTML = `<span class="opt-label">${OPTION_LABELS[optIdx] || optIdx + 1}</span><span>${escapeHtml(opt)}</span>`;
+        b.addEventListener("click", () => {
+          if (graded) return;
+          picks[axisIdx] = optIdx;
+          [...block.querySelectorAll(".axis-opt")].forEach((o) => o.classList.remove("selected"));
+          b.classList.add("selected");
+          maybeShowCheck();
+        });
+        block.appendChild(b);
+      });
+      axesEl.appendChild(block);
+    });
+
+    function maybeShowCheck() {
+      if (picks.every((p) => p !== null) && !area.querySelector(".btn-primary")) {
+        const btn = document.createElement("button");
+        btn.className = "btn-primary";
+        btn.style.marginTop = "4px";
+        btn.textContent = "Проверить";
+        btn.addEventListener("click", grade);
+        area.querySelector(".slip").appendChild(btn);
+      }
+    }
+
+    function grade() {
+      graded = true;
+      let allOk = true;
+      const blocks = axesEl.querySelectorAll(".axis-block");
+      blocks.forEach((block, i) => {
+        const ok = picks[i] === q.axes[i].correct;
+        if (!ok) allOk = false;
+        [...block.querySelectorAll(".axis-opt")].forEach((b, oi) => {
+          b.disabled = true;
+          if (oi === q.axes[i].correct) b.classList.add("correct");
+          else if (oi === picks[i]) b.classList.add("incorrect");
+        });
+      });
+      if (allOk) session.correct++; else session.wrong++;
+      area.querySelector(".btn-primary").remove();
+      const v = area.querySelector("#verdict");
+      v.innerHTML = `<div class="verdict ${allOk ? "ok" : "no"}">${allOk ? "✓ Всё верно" : "✕ Есть ошибки"}</div>`;
+      addNextButton(area);
+    }
+  }
+
+  function renderFillBlankCard(area, q) {
+    let graded = false;
+    const picks = new Array(q.blanks.length).fill(null);
+    area.innerHTML = `
+      <div class="slip">
+        <div class="slip-kicker">Вставьте пропущенное</div>
+        <div class="slip-question">${escapeHtml(q.question)}</div>
+        <div id="blanks"></div>
+        <div id="verdict"></div>
+      </div>
+    `;
+    const blanksEl = area.querySelector("#blanks");
+    q.blanks.forEach((options, bIdx) => {
+      const block = document.createElement("div");
+      block.className = "axis-block";
+      block.innerHTML = `<div class="axis-label">Пропуск ${bIdx + 1}</div>`;
+      const isMulti = options.filter((o) => o.correct).length > 1;
+      const chosen = new Set();
+      options.forEach((opt, oIdx) => {
+        const b = document.createElement("button");
+        b.className = "opt axis-opt";
+        b.innerHTML = `<span>${escapeHtml(opt.text)}</span>`;
+        b.addEventListener("click", () => {
+          if (graded) return;
+          if (isMulti) {
+            b.classList.toggle("selected");
+            if (chosen.has(oIdx)) chosen.delete(oIdx); else chosen.add(oIdx);
+            picks[bIdx] = [...chosen];
+          } else {
+            [...block.querySelectorAll(".axis-opt")].forEach((o) => o.classList.remove("selected"));
+            b.classList.add("selected");
+            picks[bIdx] = [oIdx];
+          }
+          maybeShowCheck();
+        });
+        block.appendChild(b);
+      });
+      blanksEl.appendChild(block);
+    });
+
+    function maybeShowCheck() {
+      if (picks.every((p) => p && p.length) && !area.querySelector(".btn-primary")) {
+        const btn = document.createElement("button");
+        btn.className = "btn-primary";
+        btn.style.marginTop = "4px";
+        btn.textContent = "Проверить";
+        btn.addEventListener("click", grade);
+        area.querySelector(".slip").appendChild(btn);
+      }
+    }
+
+    function grade() {
+      graded = true;
+      let allOk = true;
+      const blocks = blanksEl.querySelectorAll(".axis-block");
+      blocks.forEach((block, bIdx) => {
+        const correctSet = new Set(q.blanks[bIdx].map((o, i) => (o.correct ? i : -1)).filter((i) => i >= 0));
+        const pickedSet = new Set(picks[bIdx]);
+        const ok = correctSet.size === pickedSet.size && [...correctSet].every((i) => pickedSet.has(i));
+        if (!ok) allOk = false;
+        [...block.querySelectorAll(".axis-opt")].forEach((b, oIdx) => {
+          b.disabled = true;
+          if (correctSet.has(oIdx)) b.classList.add("correct");
+          else if (pickedSet.has(oIdx)) b.classList.add("incorrect");
+        });
+      });
+      if (allOk) session.correct++; else session.wrong++;
+      area.querySelector(".btn-primary").remove();
+      const v = area.querySelector("#verdict");
+      v.innerHTML = `<div class="verdict ${allOk ? "ok" : "no"}">${allOk ? "✓ Всё верно" : "✕ Есть ошибки"}</div>`;
       addNextButton(area);
     }
   }
