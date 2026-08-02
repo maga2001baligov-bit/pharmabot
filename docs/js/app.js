@@ -21,16 +21,19 @@ function initTheme() {
 }
 initTheme();
 
-document.getElementById("theme-toggle").addEventListener("click", () => {
-  const next = Storage.getTheme() === "dark" ? "light" : "dark";
-  Storage.setTheme(next);
-  applyTheme(next);
-});
+const themeToggleBtn = document.getElementById("theme-toggle");
+if (themeToggleBtn) {
+  themeToggleBtn.addEventListener("click", () => {
+    const next = Storage.getTheme() === "dark" ? "light" : "dark";
+    Storage.setTheme(next);
+    applyTheme(next);
+  });
+}
 
 // Live-sync with Telegram's theme if the user switches it while the app is open,
 // but only if they haven't manually overridden the toggle themselves this session.
 let userOverrodeTheme = false;
-document.getElementById("theme-toggle").addEventListener("click", () => { userOverrodeTheme = true; });
+if (themeToggleBtn) themeToggleBtn.addEventListener("click", () => { userOverrodeTheme = true; });
 if (tg && typeof tg.onEvent === "function") {
   tg.onEvent("themeChanged", () => {
     if (userOverrodeTheme) return;
