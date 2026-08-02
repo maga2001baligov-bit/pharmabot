@@ -27,6 +27,19 @@ document.getElementById("theme-toggle").addEventListener("click", () => {
   applyTheme(next);
 });
 
+// Live-sync with Telegram's theme if the user switches it while the app is open,
+// but only if they haven't manually overridden the toggle themselves this session.
+let userOverrodeTheme = false;
+document.getElementById("theme-toggle").addEventListener("click", () => { userOverrodeTheme = true; });
+if (tg && typeof tg.onEvent === "function") {
+  tg.onEvent("themeChanged", () => {
+    if (userOverrodeTheme) return;
+    const next = tg.colorScheme === "dark" ? "dark" : "light";
+    Storage.setTheme(next);
+    applyTheme(next);
+  });
+}
+
 const OPTION_LABELS = ["А", "Б", "В", "Г", "Д", "Е", "Ж", "З"];
 const KIND_LABEL = {
   matching: "Соответствие",
@@ -282,6 +295,7 @@ function renderTestCard(area, q) {
   else if (q.type === "matching" || q.type === "table") renderMatchingCard(area, q);
   else if (q.type === "characterize") renderCharacterizeCard(area, q);
   else if (q.type === "fill_blank" && q.blanks) renderFillBlankCard(area, q);
+  else if (q.type === "fill_blank_simple") renderFillBlankSimpleCard(area, q);
   else renderFlashcardTestCard(area, q);
 }
 
@@ -545,7 +559,55 @@ function renderFillBlankCard(area, q) {
   }
 }
 
-function renderFlashcardTestCard(area, q) {
+function normalizeAnswer(s) {
+  return String(s)
+    .toLowerCase()
+    .replace(/ё/g, "е")
+    .replace(/[.,;:()«»"'!?]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function renderFillBlankSimpleCard(area, q) {
+  area.innerHTML = `
+    <div class="slip">
+      ${slipHeader("Вставьте пропущенное", "test", q.id)}
+      <div class="slip-question">${escapeHtml(q.question).replace(/____/g, '<span class="blank-slot">____</span>')}</div>
+      <input type="text" class="fill-input" id="fill-in" placeholder="Впишите ответ" autocomplete="off" autocapitalize="off" />
+      <div id="verdict"></div>
+    </div>
+  `;
+  wireFavButton(area);
+  const input = area.querySelector("#fill-in");
+  const answerBtn = document.createElement("button");
+  answerBtn.className = "btn-primary";
+  answerBtn.style.marginTop = "10px";
+  answerBtn.textContent = "Ответить";
+  answerBtn.disabled = true;
+  answerBtn.addEventListener("click", doGrade);
+  area.querySelector(".slip").appendChild(answerBtn);
+
+  input.addEventListener("input", () => { answerBtn.disabled = input.value.trim().length === 0; });
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !answerBtn.disabled) doGrade();
+  });
+
+  function doGrade() {
+    const accepted = q.answer_text.split("/").map((s) => normalizeAnswer(s));
+    const ok = accepted.includes(normalizeAnswer(input.value));
+    grade("test", q.id, ok);
+    input.disabled = true;
+    answerBtn.remove();
+    const v = area.querySelector("#verdict");
+    v.innerHTML = `
+      <div class="verdict ${ok ? "ok" : "no"}">${ok ? "✓ Правильно" : "✕ Неправильно"}</div>
+      <div class="row-hint">Верный ответ: <b>${escapeHtml(q.answer_text.replace(/\//g, " / "))}</b></div>
+    `;
+    addNextButton(area);
+  }
+}
+
+
   area.innerHTML = `
     <div class="slip">
       ${slipHeader(KIND_LABEL[q.type] || "Вопрос", "test", q.id)}
