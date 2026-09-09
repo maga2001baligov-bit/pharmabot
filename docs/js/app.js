@@ -705,7 +705,7 @@ function resumeSession(saved) {
   session = { ...saved };
   document.getElementById("session-label").textContent = session.kind === "test" ? "тесты" : "рецепты";
   showScreen("session");
-  startExamTimerIfNeeded();
+startSessionTimerIfNeeded();
   renderCurrent();
 }
 
