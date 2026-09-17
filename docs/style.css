@@ -23,7 +23,6 @@
 }
 
 html[data-theme="dark"] {
-  /* "Ядро" — тёмно-красная тема, зафиксированный дизайн-пакет */
   --bg: #0a0908;
   --surface: #161412;
   --surface-2: #1e1b18;
@@ -47,9 +46,6 @@ html[data-theme="dark"] {
 html, body { transition: background-color 0.2s ease, color 0.2s ease; }
 
 * { box-sizing: border-box; }
-/* WebKit/Safari по умолчанию красит текст <button> в системный синий, если
-   явно не указать наследование — из-за этого в реальном Telegram (WKWebView)
-   весь акцентный красный превращался обратно в синий на кнопках. */
 button { color: inherit; font: inherit; }
 
 html, body {
@@ -79,8 +75,6 @@ html[data-theme="dark"] .topbar h1 { color: transparent; }
 html:not([data-theme="dark"]) .topbar h1 { -webkit-text-fill-color: initial; background: none; color: var(--ink); }
 .hidden { display: none !important; }
 
-/* ---------- Home ---------- */
-
 .topbar { padding: 6px 2px 14px; }
 .topbar h1 { font-size: 24px; font-weight: 700; margin: 0; }
 .topbar-sub { margin: 4px 0 0; font-size: 13px; color: var(--ink-soft); }
@@ -96,8 +90,6 @@ html:not([data-theme="dark"]) .topbar h1 { -webkit-text-fill-color: initial; bac
 .stat-chip .l { font-size: 11.5px; color: var(--ink-soft); margin-top: 2px; }
 .stat-chip.ok .n { color: var(--green); }
 .stat-chip.no .n { color: var(--red); }
-
-/* ---------- Continue card ---------- */
 
 .continue-card {
   display: block; width: 100%; text-align: left; font-family: inherit; cursor: pointer;
@@ -132,7 +124,6 @@ html[data-theme="dark"] .lazy-btn-icon {
   width: 36px; height: 36px; box-shadow: 0 4px 16px -2px var(--accent-glow);
 }
 
-/* ---------- Celebration toasts ---------- */
 .toast-host {
   position: fixed; top: max(12px, env(safe-area-inset-top)); left: 0; right: 0;
   display: flex; flex-direction: column; align-items: center; gap: 8px;
@@ -147,7 +138,6 @@ html[data-theme="dark"] .lazy-btn-icon {
 .toast-bonus { background: linear-gradient(135deg, #7c3aed, #6d28d9); }
 .toast-break { background: linear-gradient(135deg, #0d9488, #0f766e); white-space: normal; max-width: 82vw; text-align: center; line-height: 1.35; }
 
-/* ---------- Today's goal ring ---------- */
 .goal-ring-card {
   display: flex; align-items: center; gap: 14px; width: 100%; text-align: left;
   font-family: inherit; cursor: pointer; color: inherit;
@@ -162,8 +152,6 @@ html[data-theme="dark"] .lazy-btn-icon {
 .toast-out { animation: toast-out 0.3s ease forwards; }
 @keyframes toast-in { from { opacity: 0; transform: translateY(-14px) scale(0.9); } to { opacity: 1; transform: none; } }
 @keyframes toast-out { to { opacity: 0; transform: translateY(-10px) scale(0.95); } }
-
-/* ---------- Session progress ---------- */
 
 .session-progress { height: 5px; border-radius: 999px; background: var(--border); margin-bottom: 14px; overflow: hidden; }
 .session-progress-fill { display: block; height: 100%; background: var(--blue); border-radius: 999px; transition: width 0.2s ease; }
@@ -193,8 +181,6 @@ html[data-theme="dark"] .session-timer { background: #3a2f16; }
 .card-title { width: calc(100% - 42px); }
 .card-sub { width: calc(100% - 42px); margin-left: 42px; margin-top: 2px; }
 
-/* ---------- Bars ---------- */
-
 .subbar, .session-bar {
   display: flex; align-items: center; gap: 10px; padding: 4px 0 16px;
 }
@@ -215,8 +201,6 @@ html[data-theme="dark"] .session-timer { background: #3a2f16; }
 .session-label {
   font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft);
 }
-
-/* ---------- Search ---------- */
 
 .search-body { display: flex; flex-direction: column; gap: 12px; }
 .search-input {
@@ -240,8 +224,6 @@ html[data-theme="dark"] .session-timer { background: #3a2f16; }
 .search-hit .t { font-size: 14px; line-height: 1.4; }
 .search-empty { text-align: center; color: var(--ink-soft); font-size: 13.5px; padding: 30px 10px; }
 
-/* ---------- Mode select ---------- */
-
 .mode-list { display: flex; flex-direction: column; gap: 10px; }
 .mode-btn {
   display: flex; justify-content: space-between; align-items: center; gap: 10px;
@@ -256,8 +238,6 @@ html[data-theme="dark"] .session-timer { background: #3a2f16; }
 .mode-btn-highlight .t { color: var(--blue); }
 .mode-btn-highlight .n { color: var(--blue); }
 .mode-btn[disabled] { opacity: 0.45; }
-
-/* ---------- Cards / questions ---------- */
 
 .card-area { display: flex; flex-direction: column; gap: 16px; }
 
@@ -313,7 +293,6 @@ html[data-theme="dark"] .session-timer { background: #3a2f16; }
   border-radius: 10px; padding: 10px 12px; line-height: 1.5;
 }
 
-/* ---------- Personal mnemonic box ---------- */
 .mnemonic-box { margin-top: 12px; }
 .mnemonic-add-btn {
   width: 100%; text-align: left; background: none; border: 1px dashed var(--border);
@@ -347,7 +326,6 @@ html[data-theme="dark"] .session-timer { background: #3a2f16; }
 .mnemonic-save-btn { background: var(--blue); color: #fff; border: 1px solid var(--blue); }
 .mnemonic-cancel-btn { background: none; color: var(--ink-soft); border: 1px solid var(--border); }
 
-/* ---------- Cross-link between tests and recipes on the same topic ---------- */
 .crosslink-btn {
   display: flex; justify-content: space-between; align-items: center; width: 100%;
   margin-top: 10px; background: var(--green-soft); border: 1px solid var(--green);
@@ -357,7 +335,6 @@ html[data-theme="dark"] .session-timer { background: #3a2f16; }
 .crosslink-btn:active { opacity: 0.85; }
 .crosslink-n { font-family: "IBM Plex Mono", monospace; font-weight: 700; }
 
-/* ---------- Confidence calibration prompt ---------- */
 .confidence-box {
   margin-top: 12px; background: var(--surface); border: 1px solid var(--border);
   border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px;
@@ -372,8 +349,6 @@ html[data-theme="dark"] .session-timer { background: #3a2f16; }
 }
 .confidence-btn:active { background: var(--blue-soft); border-color: var(--blue); }
 .confidence-done { font-size: 12.5px; color: var(--ink-soft); text-align: center; }
-
-/* ---------- actions ---------- */
 
 .actions { display: flex; gap: 10px; margin-top: 6px; }
 
@@ -401,8 +376,6 @@ html[data-theme="dark"] .session-timer { background: #3a2f16; }
 .btn-know { background: var(--green-soft); border: 1px solid var(--green); color: var(--green); }
 .btn-dont { background: var(--red-soft); border: 1px solid var(--red); color: var(--red); }
 .btn-ghost-pair { display: flex; gap: 10px; margin-top: 6px; }
-
-/* ---------- matching / table / characterize ---------- */
 
 .legend {
   display: flex; flex-wrap: wrap; gap: 8px;
@@ -433,7 +406,6 @@ html[data-theme="dark"] .session-timer { background: #3a2f16; }
 .match-row.row-no { border-color: var(--red); background: var(--red-soft); }
 .row-hint { margin-top: 8px; font-size: 12.5px; color: var(--ink-soft); }
 
-/* ---------- matching: list/accordion style ---------- */
 .match-acc { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
 .acc-item {
   border: 1px solid var(--border); border-radius: 10px; background: var(--bg); overflow: hidden;
@@ -459,7 +431,6 @@ html[data-theme="dark"] .session-timer { background: #3a2f16; }
 }
 .check-box.on { background: var(--green-soft); border-color: var(--green); }
 
-/* ---------- matching: connect-the-lines style ---------- */
 .lines-hint { font-size: 12px; color: var(--ink-soft); margin: 2px 0 12px; }
 .lines-wrap { position: relative; display: flex; justify-content: space-between; gap: 10px; }
 .lines-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
@@ -495,8 +466,6 @@ html[data-theme="dark"] .session-timer { background: #3a2f16; }
 .fill-input[disabled] { opacity: 0.7; }
 
 
-/* ---------- recipes ---------- */
-
 .rx-block {
   margin-top: 14px; background: var(--bg); border: 1px dashed var(--border); border-radius: 10px;
   padding: 14px 16px; font-family: "IBM Plex Mono", monospace; font-size: 13.5px; line-height: 1.7; white-space: pre-wrap;
@@ -507,6 +476,33 @@ html[data-theme="dark"] .session-timer { background: #3a2f16; }
   resize: vertical; background: var(--surface); color: var(--ink);
 }
 .rx-input:focus { outline: none; border-color: var(--blue); }
+
+.rx-mode-toggle { display: flex; gap: 8px; margin-top: 12px; }
+.rx-mode-btn {
+  flex: 1; background: var(--bg); border: 1px solid var(--border); color: var(--ink-soft);
+  border-radius: 10px; padding: 9px 10px; font-size: 13.5px; font-family: inherit; cursor: pointer;
+}
+.rx-mode-btn.active { background: var(--blue-soft); border-color: var(--blue); color: var(--blue); font-weight: 600; }
+
+.rx-canvas {
+  display: block; width: 100%; height: 220px; margin-top: 14px; touch-action: none;
+  border: 1px solid var(--border); border-radius: 10px; background: var(--surface);
+}
+.rx-canvas-wrap { position: relative; }
+.rx-expand-btn {
+  position: absolute; top: 22px; right: 8px; width: 32px; height: 32px; border-radius: 50%;
+  border: 1px solid var(--border); background: var(--surface); color: var(--ink-soft);
+  font-size: 15px; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0;
+}
+
+.rx-fullscreen-overlay {
+  display: none; flex-direction: column; position: fixed; inset: 0; z-index: 1000;
+  background: var(--bg); padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
+}
+.rx-fullscreen-overlay.open { display: flex; }
+.rx-fullscreen-bar { display: flex; gap: 8px; margin-bottom: 10px; }
+.rx-fullscreen-slot { flex: 1; display: flex; min-height: 0; }
+.rx-fullscreen-slot .rx-canvas { flex: 1; height: 100%; margin-top: 0; }
 
 .rx-parts { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
 .rx-part { border-radius: 10px; padding: 10px 12px; border: 1px solid var(--border); background: var(--bg); }
@@ -521,16 +517,12 @@ html[data-theme="dark"] .session-timer { background: #3a2f16; }
 .rx-score.partial { color: var(--amber); }
 .rx-score.missing { color: var(--red); }
 
-/* ---------- result ---------- */
-
 #screen-result { display: flex; align-items: center; min-height: 80vh; }
 .result-card { width: 100%; text-align: center; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 36px 22px; }
 .result-mark { font-size: 32px; color: var(--blue); margin-bottom: 8px; }
 .result-card h2 { font-size: 22px; margin: 0 0 8px; }
 .result-text { color: var(--ink-soft); font-size: 14.5px; line-height: 1.6; margin: 0 0 20px; white-space: pre-line; }
 .result-actions { display: flex; flex-direction: column; gap: 10px; }
-
-/* ---------- stats ---------- */
 
 .stats-body { display: flex; flex-direction: column; gap: 12px; }
 .stats-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; }
@@ -553,8 +545,6 @@ html[data-theme="dark"] .session-timer { background: #3a2f16; }
 .topic-bar-fill.mid { background: var(--amber); }
 .topic-bar-fill.low { background: var(--red); }
 .topic-row-sub { font-size: 11.5px; color: var(--ink-soft); margin-top: 4px; }
-
-/* ---------- settings ---------- */
 
 .settings-body { display: flex; flex-direction: column; gap: 16px; }
 .settings-note { font-size: 13.5px; color: var(--ink-soft); line-height: 1.5; }
@@ -595,8 +585,6 @@ html[data-theme="dark"] .session-timer { background: #3a2f16; }
 .segmented button[data-size="large"] { font-size: 18px; }
 .segmented button.active { background: var(--surface); color: var(--blue); box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
 
-/* ---------- session nav (back/skip) ---------- */
-
 .session-nav { display: flex; justify-content: space-between; margin-top: 10px; }
 .session-nav-btn {
   background: none; border: none; color: var(--ink-soft); font-family: inherit;
@@ -604,16 +592,12 @@ html[data-theme="dark"] .session-timer { background: #3a2f16; }
 }
 .session-nav-btn:active { color: var(--blue); }
 
-/* ---------- link button (e.g. "Все сессии") ---------- */
-
 .link-btn {
   display: block; background: none; border: none; color: var(--blue); font-family: inherit;
   font-size: 13px; font-weight: 600; padding: 2px 2px 12px; cursor: pointer; margin-top: -6px;
 }
 
 .session-hit .d { font-family: "IBM Plex Mono", monospace; }
-
-/* ---------- font size scaling ---------- */
 
 body.fs-small .slip-question,
 body.fs-small .opt,
@@ -624,7 +608,6 @@ body.fs-large .opt { font-size: 17px; }
 body.fs-large .card-title { font-size: 18px; }
 body.fs-large .mode-btn .t { font-size: 17px; }
 
-/* ---------- gamification: home strip ---------- */
 .gami-strip {
   display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
@@ -658,7 +641,6 @@ body.fs-large .mode-btn .t { font-size: 17px; }
 .gami-day-dot.filled { background: color-mix(in srgb, var(--green) 16%, transparent); border-color: var(--green); color: var(--green); }
 .gami-day-label { font-size: 9.5px; color: var(--ink-soft); }
 
-/* ---------- achievements screen ---------- */
 .ach-body { padding: 4px 16px 32px; }
 .ach-summary-title { font-size: 13px; color: var(--ink-soft); margin: 4px 0 16px; }
 .seal-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px 8px; margin-bottom: 24px; }
@@ -683,7 +665,6 @@ body.fs-large .mode-btn .t { font-size: 17px; }
 .rank-step.current .rank-step-name, .rank-step.done .rank-step-name { color: var(--ink); }
 .rank-line { width: 1px; height: 14px; background: var(--border); margin-left: 4.5px; }
 
-/* ---------- unlock moment ---------- */
 .unlock-overlay {
   min-height: 70vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
   padding: 40px 30px; text-align: center;
@@ -699,11 +680,9 @@ body.fs-large .mode-btn .t { font-size: 17px; }
 .unlock-desc { font-size: 14px; color: var(--ink-soft); line-height: 1.5; margin-bottom: 26px; max-width: 280px; }
 .unlock-btn { flex: none !important; padding: 14px 32px !important; }
 
-/* ---------- theory ---------- */
 .theory-text { padding: 4px 16px 16px; font-size: 14.5px; line-height: 1.6; color: var(--ink); white-space: pre-line; }
 .theory-text b { color: var(--blue); }
 
-/* ---------- theory: book page ---------- */
 .tb-top { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 8px; }
 .tb-pool { font-size: 11px; color: var(--blue); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
 .tb-pos { font-size: 12.5px; color: var(--ink-soft); font-family: "IBM Plex Mono", monospace; }
@@ -729,7 +708,6 @@ body.fs-large .mode-btn .t { font-size: 17px; }
 .tb-pagenav-btn { background: none; border: none; color: var(--blue); font-size: 14px; font-weight: 600; font-family: inherit; }
 .tb-pagenav-btn[disabled] { opacity: .3; }
 
-/* ---------- theory: search ---------- */
 .theory-search-wrap { padding: 4px 16px 10px; }
 .theory-search-input {
   width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
@@ -746,12 +724,8 @@ body.fs-large .mode-btn .t { font-size: 17px; }
 .theory-search-item-title { font-size: 14px; color: var(--ink); line-height: 1.4; }
 .theory-search-empty { padding: 20px 4px; text-align: center; color: var(--ink-soft); font-size: 14px; }
 
-/* ============================================================
-   Нижняя навигация "Ядро" — конус света, зафиксированный дизайн
-   ============================================================ */
 .navwrap { display: flex; justify-content: center; position: fixed; left: 0; right: 0; bottom: calc(16px + var(--tg-safe-bottom)); z-index: 400; pointer-events: none; }
 .navwrap .nav-outer { pointer-events: auto; }
-/* Светлая тема: та же панель, но без неонового свечения — простая заливка под активной иконкой */
 html:not([data-theme="dark"]) .nav-lamp,
 html:not([data-theme="dark"]) .nav-cone { display: none; }
 html:not([data-theme="dark"]) .nav-bar {
@@ -806,7 +780,6 @@ html[data-theme="dark"] .navwrap .nav-outer { pointer-events: auto; }
   z-index: 1;
 }
 
-/* ---------- TTS (озвучка латинских названий) ---------- */
 .tts-btn {
   background: var(--surface-2, var(--surface));
   border: 1px solid var(--border);
@@ -820,7 +793,6 @@ html[data-theme="dark"] .navwrap .nav-outer { pointer-events: auto; }
 .rx-block-row { display: flex; align-items: flex-start; gap: 8px; }
 .rx-block-row .rx-block { flex: 1; }
 
-/* ---------- Единый поиск (Тесты + Рецепты + Теория) ---------- */
 .topbar-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
 .topbar-search-btn {
   flex-shrink: 0; width: 38px; height: 38px; border-radius: 12px;
@@ -836,7 +808,6 @@ html[data-theme="dark"] .navwrap .nav-outer { pointer-events: auto; }
 .search-tag-recipe { background: var(--green-soft); color: var(--green); }
 .search-tag-theory { background: var(--amber-soft); color: var(--amber); }
 
-/* ---------- Шеринг прогресса ---------- */
 .share-progress-btn {
   width: 100%; margin: 10px 0 12px; padding: 11px; border-radius: 12px;
   background: var(--surface); border: 1px solid var(--border); color: var(--ink-soft);
@@ -855,7 +826,6 @@ html[data-theme="dark"] .navwrap .nav-outer { pointer-events: auto; }
 .share-modal-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
 .share-modal-actions .btn-primary { text-align: center; text-decoration: none; display: block; }
 
-/* ---------- Значки-достижения на Home ---------- */
 .badge-row { display: flex; gap: 8px; margin-top: 12px; }
 .badge {
   flex: 1; background: var(--surface); border: 1px solid var(--border);
