@@ -23,27 +23,28 @@ const MAX_SESSIONS = 8;
 
 function emptyState() {
   return {
-    tests: {},     // id -> { correct, wrong, favorite, box, nextReview, error }
-    recipes: {},   // id -> same shape
-    history: [],   // { date, kind, mode, total, correct, wrong, pct }
+    tests: {},
+    recipes: {},
+    history: [],
     settings: {
       shuffleAnswers: true,
       examTimer: false,
       fontSize: "medium",
       userName: "",
-      showExplanations: true, // toggle for the 💡 explanation box
-      matchingStyle: "cards", // "cards" | "list" — how matching/table questions render
-      gamification: true, // toggle for ranks/XP/streak/achievements on Home
-      mnemonics: true, // toggle for the personal-mnemonic box under each card
-      confidence: true, // toggle for the post-answer "were you sure?" calibration prompt
-      breakReminders: true, // toggle for the "you've been at this a while" nudge during long sessions
-      dailyGoal: 10, // "visible today's goal" ring target — small and achievable on purpose
+      showExplanations: true,
+      matchingStyle: "cards",
+      gamification: true,
+      mnemonics: true,
+      confidence: true,
+      breakReminders: true,
+      dailyGoal: 10,
+      recipeInputMode: "type",
     },
-    sessions: [],  // [{ id, kind, mode, queue, pos, correct, wrong, startedAt, updatedAt }]
-    theme: null,   // "light" | "dark" | null (null = not yet chosen)
-    achievementsUnlocked: [], // string ids of achievements already shown to the user
-    calibration: [], // [{ date, kind, id, correct, confident }] — rolling log for the confidence-calibration stats
-    bonusXP: 0, // accumulated "surprise bonus" XP from the variable-reward streak system
+    sessions: [],
+    theme: null,
+    achievementsUnlocked: [],
+    calibration: [],
+    bonusXP: 0,
   };
 }
 
@@ -53,7 +54,6 @@ function load() {
     if (!raw) return emptyState();
     const parsed = JSON.parse(raw);
     const state = { ...emptyState(), ...parsed };
-    // migrate legacy single-session field into the sessions list, once
     if (parsed.activeSession && (!parsed.sessions || !parsed.sessions.length)) {
       const legacy = parsed.activeSession;
       if (legacy.pos < legacy.queue.length) {
@@ -100,21 +100,6 @@ export const Storage = {
     return { ...entryFor(state, kind, id) };
   },
 
-  /**
-   * Record a result and reschedule with an FSRS-inspired algorithm
-   * (stability/difficulty/retrievability model with a power-law forgetting
-   * curve), replacing the earlier SM-2-style scheduler. This is a simplified,
-   * self-tuned variant — not a byte-for-byte port of the reference FSRS
-   * weights — chosen because it models forgetting more realistically than
-   * SM-2's fixed 1→6→interval*ease ladder, especially for cards reviewed
-   * very late or very early relative to their schedule.
-   *
-   * Backward compatible: existing entries only have the old SM-2 fields
-   * (ease/reps/interval). On first call after the upgrade we derive a
-   * starting stability/difficulty from those instead of resetting anyone's
-   * progress to zero. e.interval/e.lastReviewed keep being written exactly
-   * as before, so getMemoryStrength() and the memory-ring UI need no changes.
-   */
   recordResult(kind, id, wasCorrect) {
     const state = load();
     const e = entryFor(state, kind, id);
@@ -123,19 +108,13 @@ export const Storage = {
     const elapsedDays = e.lastReviewed ? Math.max(0, daysBetweenISO(e.lastReviewed, today)) : 0;
 
     if (e.difficulty == null) {
-      // Migrate from the old SM-2 ease factor (1.3 hard .. 2.5+ easy) onto an
-      // FSRS-style difficulty scale (1 easy .. 10 hard) — inverse relationship.
       const oldEase = e.ease != null ? e.ease : 2.5;
       e.difficulty = Math.max(1, Math.min(10, 10 - (oldEase - 1.3) * (9 / 1.7)));
     }
     if (e.stability == null) {
-      // Old interval (days) is a reasonable proxy for a starting stability.
       e.stability = Math.max(0.5, e.interval || 1);
     }
 
-    // Retrievability just before this review, using FSRS's power forgetting
-    // curve (falls off more slowly than exponential decay, matching how
-    // human forgetting is actually shaped).
     const retrievability = elapsedDays > 0
       ? Math.pow(1 + elapsedDays / (9 * e.stability), -1)
       : 1;
@@ -143,17 +122,12 @@ export const Storage = {
     if (wasCorrect) {
       e.correct += 1;
       e.error = false;
-      // Successful recall: stability grows more when the card was already
-      // fading (low retrievability) and less when it was still fresh —
-      // the "spacing effect".
       const growth = 1 + 0.9 * (1 - retrievability) * (1 / Math.sqrt(e.difficulty));
       e.stability = Math.max(0.5, e.stability * growth);
       e.difficulty = Math.max(1, e.difficulty - 0.15);
     } else {
       e.wrong += 1;
       e.error = true;
-      // Lapse: stability drops sharply (classic FSRS behaviour) but not all
-      // the way back to zero, and difficulty rises so it's treated as harder.
       e.stability = Math.max(0.5, e.stability * 0.35);
       e.difficulty = Math.min(10, e.difficulty + 1.2);
     }
@@ -164,15 +138,10 @@ export const Storage = {
     save(state);
   },
 
-  /**
-   * "Memory strength" 0–100 for the ring UI: how much of the interval between
-   * the last review and the next scheduled one has already elapsed, inverted
-   * (100 = just reviewed, 0 = due/overdue). Mirrors a forgetting-curve decay.
-   */
   getMemoryStrength(kind, id) {
     const state = load();
     const e = bucket(state, kind)[id];
-    if (!e || !e.lastReviewed || !e.interval) return null; // never graded yet
+    if (!e || !e.lastReviewed || !e.interval) return null;
     const elapsed = daysBetweenISO(e.lastReviewed, todayISO());
     const pct = Math.round(100 * (1 - elapsed / e.interval));
     return Math.max(0, Math.min(100, pct));
@@ -240,7 +209,7 @@ export const Storage = {
     const state = load();
     const pct = total ? Math.round((100 * correct) / total) : 0;
     state.history.push({ date: new Date().toISOString(), kind, mode, total, correct, wrong, pct });
-    state.history = state.history.slice(-100); // keep it bounded
+    state.history = state.history.slice(-100);
     save(state);
   },
 
@@ -282,7 +251,6 @@ export const Storage = {
     return { correct, wrong };
   },
 
-  /** Aggregate solved-question counts for today / last 7 days / all time. */
   getPeriodStats() {
     const state = load();
     const today = todayISO();
@@ -313,7 +281,6 @@ export const Storage = {
     return state.settings;
   },
 
-  /** Upsert a session snapshot into the recent-sessions list (max MAX_SESSIONS, most recent first). */
   saveSession(sessionSnapshot) {
     const state = load();
     const withStamp = { ...sessionSnapshot, updatedAt: new Date().toISOString() };
@@ -325,13 +292,11 @@ export const Storage = {
     save(state);
   },
 
-  /** Most recent unfinished session overall (for the home-screen "continue" card). */
   getLatestSession() {
     const state = load();
     return state.sessions[0] || null;
   },
 
-  /** All saved sessions, optionally filtered by kind ("test" | "recipe"). */
   getSessions(kind) {
     const state = load();
     return kind ? state.sessions.filter((s) => s.kind === kind) : state.sessions.slice();
@@ -357,7 +322,7 @@ export const Storage = {
 
   getTheme() {
     const state = load();
-    return state.theme; // null | "light" | "dark"
+    return state.theme;
   },
 
   setTheme(theme) {
@@ -366,25 +331,18 @@ export const Storage = {
     save(state);
   },
 
-  /** Full session-summary history (for streak calculation etc). */
   getHistory() {
     return load().history.slice();
   },
 
-  /**
-   * Log a post-answer confidence self-report for the calibration stats
-   * ("уверен, но ошибся" / "не был уверен, но угадал верно").
-   * `confident` is a plain boolean the person taps right after seeing the verdict.
-   */
   recordConfidence(kind, id, wasCorrect, confident) {
     const state = load();
     if (!state.calibration) state.calibration = [];
     state.calibration.push({ date: new Date().toISOString(), kind, id, correct: !!wasCorrect, confident: !!confident });
-    state.calibration = state.calibration.slice(-500); // keep it bounded
+    state.calibration = state.calibration.slice(-500);
     save(state);
   },
 
-  /** Aggregate the calibration log into the four confident×correct quadrants. */
   getCalibrationStats() {
     const rows = load().calibration || [];
     const q = { confidentCorrect: 0, confidentWrong: 0, unsureCorrect: 0, unsureWrong: 0 };
@@ -405,7 +363,6 @@ export const Storage = {
     };
   },
 
-  /** Small unpredictable reward — a random amount added on top of the normal XP formula. */
   addBonusXP(amount) {
     const state = load();
     state.bonusXP = (state.bonusXP || 0) + amount;
@@ -420,7 +377,6 @@ export const Storage = {
     return (load().achievementsUnlocked || []).slice();
   },
 
-  /** Mark an achievement as shown/unlocked. Returns true if it was newly added. */
   unlockAchievement(id) {
     const state = load();
     if (!state.achievementsUnlocked) state.achievementsUnlocked = [];

@@ -1,14 +1,14 @@
 // PharmaBot service worker — makes the Mini App installable and usable offline.
 // Bump CACHE_NAME on deploys where offline users must pick up new app-shell code;
 // data files are refreshed opportunistically on every successful online fetch anyway.
-const CACHE_NAME = "pharmabot-cache-v7";
+const CACHE_NAME = "pharmabot-cache-v10";
 
 const APP_SHELL = [
   "./",
   "index.html",
-  "style.css?v=12",
-  "js/app.js?v=18",
-  "js/storage.js?v=16",
+  "style.css?v=13",
+  "js/app.js?v=21",
+  "js/storage.js?v=17",
   "js/recipeMatch.js?v=16",
   "data/tests.json",
   "data/recipes.json",
@@ -38,8 +38,6 @@ self.addEventListener("fetch", (event) => {
   if (req.method !== "GET") return;
 
   const url = new URL(req.url);
-  // Only manage our own same-origin files — third-party CDN scripts (Telegram's
-  // web app JS, Google Fonts) go straight to the network, untouched.
   if (url.origin !== self.location.origin) return;
 
   event.respondWith(
