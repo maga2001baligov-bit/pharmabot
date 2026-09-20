@@ -1,4 +1,4 @@
-import { Storage } from "./storage.js?v=16";
+import { Storage } from "./storage.js?v=17";
 import { compareRecipe } from "./recipeMatch.js?v=16";
 
 window.addEventListener("error", (e) => {
@@ -201,10 +201,19 @@ function shuffle(arr) {
 function sample(arr, n) { return shuffle(arr).slice(0, Math.min(n, arr.length)); }
 
 async function loadData() {
-  const [t, r, th] = await Promise.all([fetch("data/tests.json"), fetch("data/recipes.json"), fetch("data/theory.json")]);
+  const [t, r, th, sk] = await Promise.all([
+    fetch("data/tests.json"),
+    fetch("data/recipes.json"),
+    fetch("data/theory.json"),
+    fetch("data/skeletons.json").catch(() => null),
+  ]);
   ALL_TESTS = await t.json();
   ALL_RECIPES = await r.json();
   ALL_THEORY = await th.json();
+  // Скелеты строк рецепта лежат отдельным файлом id -> [метки]; если у рецепта своё поле skeleton — оно главнее
+  let skeletons = {};
+  try { if (sk && sk.ok) skeletons = await sk.json(); } catch (e) { skeletons = {}; }
+  ALL_RECIPES.forEach((x) => { if (!Array.isArray(x.skeleton) && Array.isArray(skeletons[x.id])) x.skeleton = skeletons[x.id]; });
 }
 
 function allIds(kind) { return (kind === "test" ? ALL_TESTS : ALL_RECIPES).map((x) => x.id); }
@@ -2083,16 +2092,58 @@ function speakText(text, lang) {
 }
 
 function renderRecipeCard(area, r) {
+  const skeleton = Array.isArray(r.skeleton) && r.skeleton.length ? r.skeleton : ["Rp.: ", "D.t.d.: № ", "S. "];
+  const mode = Storage.getSettings().recipeInputMode === "draw" ? "draw" : "type";
   area.innerHTML = `
     <div class="slip">
       ${slipHeader("Напиши рецепт", "recipe", r.id)}
       <div class="slip-question"><b>${escapeHtml(r.name)}</b> <button class="tts-btn" id="tts-name" type="button" aria-label="Произнести название">🔊</button></div>
-      <textarea class="rx-input" id="rx-in" placeholder="Rp.: ...&#10;D.t.d.: № ...&#10;S. ..."></textarea>
-      <div id="rx-result"></div>
+      <div class="rx-mode-toggle" role="tablist">
+        <button class="rx-mode-btn${mode === "type" ? " active" : ""}" data-mode="type" type="button">⌨️ Печатать</button>
+        <button class="rx-mode-btn${mode === "draw" ? " active" : ""}" data-mode="draw" type="button">✍️ Рисовать</button>
+      </div>
+      <div id="rx-body"></div>
     </div>
   `;
   wireFavButton(area);
   area.querySelector("#tts-name").addEventListener("click", () => speakText(r.name, "ru-RU"));
+  area.querySelectorAll(".rx-mode-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const stale = document.getElementById("rx-fullscreen-overlay");
+      if (stale) { stale.classList.remove("open"); stale.querySelector("#rx-fullscreen-slot").innerHTML = ""; }
+      Storage.setSettings({ recipeInputMode: btn.dataset.mode });
+      renderRecipeCard(area, r);
+    });
+  });
+
+  if (mode === "draw") renderRecipeDrawBody(area, r);
+  else renderRecipeTypeBody(area, r, skeleton);
+}
+
+// Печатный режим: скелет бланка (только фиксированные метки строк Rp./D.t.d./S.,
+// взятые из структуры именно этого рецепта) + автоматическая построчная проверка.
+function renderRecipeTypeBody(area, r, skeleton) {
+  const body = area.querySelector("#rx-body");
+  body.innerHTML = `<textarea class="rx-input" id="rx-in"></textarea><div id="rx-result"></div>`;
+
+  const ta = area.querySelector("#rx-in");
+  ta.value = skeleton[0] || "";
+  ta.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    const lineIndex = (ta.value.slice(0, ta.selectionStart).match(/\n/g) || []).length;
+    const nextLabel = skeleton[lineIndex + 1] ?? "";
+    const insert = "\n" + nextLabel;
+    const start = ta.selectionStart, end = ta.selectionEnd;
+    ta.value = ta.value.slice(0, start) + insert + ta.value.slice(end);
+    const pos = start + insert.length;
+    ta.setSelectionRange(pos, pos);
+  });
+  requestAnimationFrame(() => {
+    ta.focus();
+    ta.setSelectionRange(ta.value.length, ta.value.length);
+  });
+
   const checkBtn = document.createElement("button");
   checkBtn.className = "btn-primary";
   checkBtn.style.marginTop = "6px";
@@ -2130,6 +2181,147 @@ function renderRecipeCard(area, r) {
     area.querySelector("#rx-in").disabled = true;
     addNextButton(area);
   }
+}
+
+// Режим рисования: пишешь пальцем/стилусом на холсте (pointer events покрывают
+// и то, и другое, плюс мышь). Автопроверки нет — это невозможно надёжно сделать
+// без распознавания рукописного текста, а оно ненадёжно на латыни+кириллице.
+// Вместо этого — сверка с эталоном самим студентом и самооценка "знал/не знал",
+// которая всё так же идёт в общую статистику и повторения через grade().
+function renderRecipeDrawBody(area, r) {
+  // на случай, если оверлей остался открытым от предыдущего рецепта/режима
+  const stale = document.getElementById("rx-fullscreen-overlay");
+  if (stale) {
+    stale.classList.remove("open");
+    stale.querySelector("#rx-fullscreen-slot").innerHTML = "";
+  }
+
+  const body = area.querySelector("#rx-body");
+  body.innerHTML = `
+    <div class="rx-canvas-wrap" id="rx-canvas-wrap">
+      <canvas id="rx-canvas" class="rx-canvas"></canvas>
+      <button class="rx-expand-btn" id="rx-expand" type="button" aria-label="На весь экран">⤢</button>
+    </div>
+    <div class="btn-ghost-pair" style="margin-top:8px;">
+      <button class="btn-secondary" id="rx-clear" type="button">Очистить</button>
+      <button class="btn-primary" id="rx-reveal" type="button">Показать ответ</button>
+    </div>
+    <div id="rx-draw-result"></div>
+  `;
+
+  const wrap = area.querySelector("#rx-canvas-wrap");
+  const canvas = area.querySelector("#rx-canvas");
+  const ctx = canvas.getContext("2d");
+  const dpr = window.devicePixelRatio || 1;
+
+  function sizeCanvas() {
+    const cssW = canvas.clientWidth, cssH = canvas.clientHeight;
+    if (!cssW || !cssH) return;
+    // Копия старого рисунка на временном холсте: смена width/height очищает canvas.
+    // Вписываем её целиком (с сохранением пропорций), а не обрезаем — иначе всё, что
+    // нарисовано в развороте на весь экран, пропадает при сворачивании.
+    let prevCopy = null;
+    if (canvas.width && canvas.height) {
+      prevCopy = document.createElement("canvas");
+      prevCopy.width = canvas.width;
+      prevCopy.height = canvas.height;
+      prevCopy.getContext("2d").drawImage(canvas, 0, 0);
+    }
+    canvas.width = Math.round(cssW * dpr);
+    canvas.height = Math.round(cssH * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.lineWidth = 2.2;
+    ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--ink") || "#111";
+    if (prevCopy) {
+      const k = Math.min(canvas.width / prevCopy.width, canvas.height / prevCopy.height);
+      const w = prevCopy.width * k, h = prevCopy.height * k;
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.drawImage(prevCopy, 0, 0, w, h);
+      ctx.restore();
+    }
+  }
+  requestAnimationFrame(sizeCanvas);
+
+  let drawing = false, lastX = 0, lastY = 0;
+  function posFromEvent(e) {
+    const rect = canvas.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  }
+  canvas.addEventListener("pointerdown", (e) => {
+    drawing = true;
+    canvas.setPointerCapture(e.pointerId);
+    const p = posFromEvent(e);
+    lastX = p.x; lastY = p.y;
+  });
+  canvas.addEventListener("pointermove", (e) => {
+    if (!drawing) return;
+    const p = posFromEvent(e);
+    ctx.beginPath();
+    ctx.moveTo(lastX, lastY);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    lastX = p.x; lastY = p.y;
+  });
+  const stopDrawing = () => { drawing = false; };
+  canvas.addEventListener("pointerup", stopDrawing);
+  canvas.addEventListener("pointercancel", stopDrawing);
+  canvas.addEventListener("pointerleave", stopDrawing);
+
+  function clearCanvas() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
+  area.querySelector("#rx-clear").addEventListener("click", clearCanvas);
+
+  // Разворот на весь экран: переносим тот же canvas-узел (со всеми
+  // обработчиками и уже нарисованным) в полноэкранный оверлей и обратно —
+  // рисунок никуда не пропадает при переключении.
+  const overlay = getOrCreateDrawOverlay();
+  const slot = overlay.querySelector("#rx-fullscreen-slot");
+  const expandBtn = area.querySelector("#rx-expand");
+  expandBtn.addEventListener("click", () => {
+    slot.appendChild(canvas);
+    overlay.classList.add("open");
+    requestAnimationFrame(sizeCanvas);
+  });
+  function collapse() {
+    wrap.insertBefore(canvas, expandBtn);
+    overlay.classList.remove("open");
+    requestAnimationFrame(sizeCanvas);
+  }
+  overlay.querySelector("#rx-fs-done").onclick = collapse;
+  overlay.querySelector("#rx-fs-clear").onclick = clearCanvas;
+
+  area.querySelector("#rx-reveal").addEventListener("click", () => {
+    area.querySelector("#rx-draw-result").innerHTML = `
+      <div class="rx-block-row">
+        <div class="rx-block">${escapeHtml(r.raw)}</div>
+        <button class="tts-btn" id="tts-latin" type="button" aria-label="Произнести на латыни">🔊</button>
+      </div>
+    `;
+    area.querySelector("#tts-latin").addEventListener("click", () =>
+      speakText(r.raw.replace(/\n/g, ". ").replace(/Rp\.|D\.t\.d\.|S\./g, ""), "it-IT")
+    );
+    area.querySelector("#rx-reveal").remove();
+    addKnowButtons(area, "recipe", r.id);
+  });
+}
+
+function getOrCreateDrawOverlay() {
+  let overlay = document.getElementById("rx-fullscreen-overlay");
+  if (overlay) return overlay;
+  overlay = document.createElement("div");
+  overlay.id = "rx-fullscreen-overlay";
+  overlay.className = "rx-fullscreen-overlay";
+  overlay.innerHTML = `
+    <div class="rx-fullscreen-bar">
+      <button class="btn-secondary" id="rx-fs-clear" type="button">Очистить</button>
+      <button class="btn-primary" id="rx-fs-done" type="button">✕ Свернуть</button>
+    </div>
+    <div class="rx-fullscreen-slot" id="rx-fullscreen-slot"></div>
+  `;
+  document.body.appendChild(overlay);
+  return overlay;
 }
 
 // ---------------------------------------------------------------------
