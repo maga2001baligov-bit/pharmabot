@@ -1,17 +1,18 @@
 // PharmaBot service worker — makes the Mini App installable and usable offline.
 // Bump CACHE_NAME on deploys where offline users must pick up new app-shell code;
 // data files are refreshed opportunistically on every successful online fetch anyway.
-const CACHE_NAME = "pharmabot-cache-v10";
+const CACHE_NAME = "pharmabot-cache-v11";
 
 const APP_SHELL = [
   "./",
   "index.html",
   "style.css?v=13",
-  "js/app.js?v=21",
+  "js/app.js?v=22",
   "js/storage.js?v=17",
   "js/recipeMatch.js?v=16",
   "data/tests.json",
   "data/recipes.json",
+  "data/skeletons.json",
   "data/theory.json",
   "manifest.json",
   "icon-192.png",
