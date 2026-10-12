@@ -251,7 +251,6 @@ html[data-theme="dark"] .session-timer { background: #3a2f16; }
   font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--blue);
 }
 .slip-top-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-.mem-ring { width: 18px; height: 18px; flex-shrink: 0; }
 .fav-btn {
   background: none; border: none; font-size: 20px; cursor: pointer; line-height: 1;
   color: #d1d5db; padding: 0;
@@ -292,63 +291,6 @@ html[data-theme="dark"] .session-timer { background: #3a2f16; }
   margin-top: 10px; font-size: 13.5px; color: var(--ink-soft); background: var(--bg);
   border-radius: 10px; padding: 10px 12px; line-height: 1.5;
 }
-
-.mnemonic-box { margin-top: 12px; }
-.mnemonic-add-btn {
-  width: 100%; text-align: left; background: none; border: 1px dashed var(--border);
-  border-radius: 10px; padding: 9px 12px; font-size: 13px; color: var(--ink-soft);
-  font-family: inherit; cursor: pointer;
-}
-.mnemonic-add-btn:active { background: var(--bg); }
-.mnemonic-note {
-  position: relative; background: var(--amber-soft); border: 1px solid var(--amber);
-  border-radius: 10px; padding: 10px 40px 10px 13px;
-}
-.mnemonic-note-label {
-  font-size: 11.5px; font-weight: 700; color: var(--amber); text-transform: uppercase; letter-spacing: 0.03em;
-}
-.mnemonic-note-text { font-size: 13.5px; line-height: 1.5; margin-top: 4px; color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; }
-.mnemonic-edit-btn {
-  position: absolute; top: 8px; right: 8px; background: none; border: none; font-size: 15px;
-  cursor: pointer; padding: 4px; line-height: 1;
-}
-.mnemonic-edit { display: flex; flex-direction: column; gap: 8px; }
-.mnemonic-textarea {
-  width: 100%; min-height: 64px; resize: vertical; font-family: inherit; font-size: 13.5px;
-  color: var(--ink); background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
-  padding: 9px 11px; line-height: 1.4; box-sizing: border-box;
-}
-.mnemonic-edit-row { display: flex; gap: 8px; }
-.mnemonic-save-btn, .mnemonic-cancel-btn {
-  flex: 1; font-family: inherit; font-size: 13px; font-weight: 600; border-radius: 9px;
-  padding: 8px 10px; cursor: pointer;
-}
-.mnemonic-save-btn { background: var(--blue); color: #fff; border: 1px solid var(--blue); }
-.mnemonic-cancel-btn { background: none; color: var(--ink-soft); border: 1px solid var(--border); }
-
-.crosslink-btn {
-  display: flex; justify-content: space-between; align-items: center; width: 100%;
-  margin-top: 10px; background: var(--green-soft); border: 1px solid var(--green);
-  border-radius: 10px; padding: 9px 13px; font-family: inherit; font-size: 13px;
-  font-weight: 600; color: var(--green); cursor: pointer;
-}
-.crosslink-btn:active { opacity: 0.85; }
-.crosslink-n { font-family: "IBM Plex Mono", monospace; font-weight: 700; }
-
-.confidence-box {
-  margin-top: 12px; background: var(--surface); border: 1px solid var(--border);
-  border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px;
-  animation: confidence-in 0.15s ease;
-}
-@keyframes confidence-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-.confidence-q { font-size: 12.5px; color: var(--ink-soft); }
-.confidence-btns { display: flex; gap: 8px; }
-.confidence-btn {
-  flex: 1; font-family: inherit; font-size: 12.5px; font-weight: 600; border-radius: 9px;
-  padding: 8px 6px; cursor: pointer; background: var(--bg); border: 1px solid var(--border); color: var(--ink);
-}
-.confidence-btn:active { background: var(--blue-soft); border-color: var(--blue); }
-.confidence-done { font-size: 12.5px; color: var(--ink-soft); text-align: center; }
 
 .actions { display: flex; gap: 10px; margin-top: 6px; }
 
